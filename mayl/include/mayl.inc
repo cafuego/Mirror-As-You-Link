@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * Functions to actually mirror a link to a lcoal directory.
+ */
 
 /*
  * This program is free software; you can redistribute it and/or modify 
@@ -63,11 +67,11 @@ function write_placeholder_file($mirror_dir, $filename, $host_url) {
  */
 function create_mirror( $host_url ) {
     global $log, $options, $REROUTE_COMMANDS;
-   
+
     $log->logDebug("create_mirror($host_url)");
 
-    $wget_path = get_key($options, 'wget_path', '/usr/local/bin/wget');
-    $user_agent = get_key($options, 'user_agent', 'Mozilla/5.0 (X11; Linux x86_64; rv:10.0.1) Gecko/20100101 Firefox/10.0.1');
+    $wget_path  = variable_get('mayl_wget_path', '/usr/bin/wget');
+    $user_agent = variable_get('mayl_user_agent', 'Mozilla/5.0');
 
     $log->logDebug("wget='$wget_path', ua='$user_agent'");
     
@@ -133,5 +137,3 @@ function create_mirror( $host_url ) {
 	
     return plugins_url("mirrors/$mirror_id/$filename", __FILE__);
 }
-
-?>
