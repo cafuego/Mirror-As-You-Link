@@ -33,6 +33,14 @@ License: GPL2
  */
 
 /**
+ * @TODO
+ *
+ * Implement a text filter that parses [mirror] [/mirror] tags. On pre_save, actually
+ * mirror the content linked to. On display, rewrite the tag to actual links and (optionally)
+ * append the MAYL icon
+ */
+
+/**
  * Implements hook_menu().
  */
 function mayl_menu() {
@@ -145,6 +153,7 @@ function mirror_every_link( $content ) {
   if ($html === FALSE)
     return $content;
 
+  // Append a local mirror link (icon) to all links.
   foreach($html->find("a[href]") as $element) {
     // Parser has a bad tendency to mangle these, so needs some trim magic.
     if (isset($element->class)) {
@@ -160,6 +169,7 @@ function mirror_every_link( $content ) {
     // TODO: check if link is local.
     debug("Mirroring $href");
 
+    // module_load_include();
     $mirror_url = create_mirror($href);
 
     if ($mirror_url === MIRROR_ERROR_PERMISSIONS)
