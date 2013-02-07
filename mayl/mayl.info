@@ -2,4 +2,4 @@ name = MAYL
 description = Mirror As You Link
 core = 7.x
 
-dependencies[] = 
+dependencies[] = simplehtmldom
