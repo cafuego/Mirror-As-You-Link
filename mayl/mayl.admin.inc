@@ -26,7 +26,7 @@
 /**
  * Settings form for MAYL.
  */
-function mayl_admin_add_page() {
+function mayl_admin_settings() {
   $form['mayl_href_css_class'] = array(
     '#title' => t('Cited link class'),
     '#description' => t('CSS class for cited links.'),
@@ -42,7 +42,7 @@ function mayl_admin_add_page() {
     '#default_value' => variable_get('mayl_mirror_css_class', 'mirror'),
   );
   $form['mayl_wget_path'] = array(
-    '#title' => t('WGET path'),
+    '#title' => t('Wget path'),
     '#description' => t('Path to wget on the server that runs Drupal'),
     '#type' => 'textfield',
     '#maxlength' => 255,

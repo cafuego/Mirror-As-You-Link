@@ -47,7 +47,6 @@ function mayl_schema() {
          'description' => 'The mirror host URL.',
          'type' => 'text',
          'not null' => TRUE,
-         'default' => '',
        ),
        'mirror_time' => array(
          'description' => 'The time the mirror was created.',

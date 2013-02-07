@@ -39,7 +39,8 @@ function mayl_menu() {
   $items['admin/config/content/mayl'] = array(
     'title' => t('Mirror As You Link'),
     'description' => t('Configure Mirror As You Link settings.'),
-    'page callback' => 'mayl_admin_settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('mayl_admin_settings'),
     'access arguments' => array('administer mayl'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'mayl.admin.inc',
@@ -190,7 +191,7 @@ if ($automatic_test) {
  */
 function _mayl_admin_wget_check($form_element) {
   $path = $form_element['#value'];
-  if (strlen($directory) == 0) {
+  if (strlen($path) == 0) {
     return $form_element;
   }
 
