@@ -59,25 +59,13 @@ function mayl_permission() {
   );
 }
 
-$logdir = plugin_dir_path(__FILE__) . 'mirrors/';
-global $log;
-$log = KLogger::instance("$logdir", KLogger::DEBUG);
-
-init_database(__FILE__);
-init_settings(__FILE__);
-
-global $options;
-$mirrored_css_class = get_key($options, 'href_css_class', 'mirrored');
-$mirror_css_class = get_key($options, 'mirror_css_class', 'mirror');
-$mayl_icon = '<img src="' . plugins_url('mayl.png', __FILE__) . '"/>';
-
 /**
  * Actually handle the cite (aka mirror) shortcode
  */
 function cite_shortcode_func( $atts, $content = NULL ) {
     global $log, $mirrored_css_class, $mirror_css_class, $mayl_icon;
 
-    $log->logDebug("content='$content', atts='" . var_export($atts, true) . "'");
+    debug("content='$content', atts='" . var_export($atts, true) . "'");
 
   // Parse and handle input attributes.
   extract( shortcode_atts( array(
@@ -120,9 +108,9 @@ function do_mayl_shortcode( $content ) {
 
     static $cnt;
     // trying to figure out why things are being called multiple times
-    //$log->logDebug("bt: " . var_export(debug_backtrace(), true));
+    //debug("bt: " . var_export(debug_backtrace(), true));
     if ($cnt > 0)
-        $log->logDebug("count = $cnt is  > 0!  filter running multiple times");
+        debug("count = $cnt is  > 0!  filter running multiple times");
     $cnt += 1;
         
   $tmp = $shortcode_tags;
@@ -150,7 +138,7 @@ function do_mayl_shortcode( $content ) {
 function mirror_every_link( $content ) {
   global $log, $mirrored_css_class, $mirror_css_class, $mayl_icon;
 
-  $log->logDebug('Attempting to mirror every link...');
+  debug('Attempting to mirror every link...');
 
   $html = str_get_html($content);
   if ($html === FALSE)
@@ -169,7 +157,7 @@ function mirror_every_link( $content ) {
       continue;
 
     // TODO: check if link is local.
-    $log->logDebug("Mirroring $href");
+    debug("Mirroring $href");
 
     $mirror_url = create_mirror($href);
 
@@ -186,6 +174,7 @@ function mirror_every_link( $content ) {
   return $html->save();
 }
 
+/*
 $hook = 'content_save_pre';
 //$hook = 'wp_insert_post_data';
 add_filter($hook, 'do_mayl_shortcode', 11);
@@ -194,6 +183,7 @@ $automatic_test = get_key($options, 'mirror_all', '');
 if ($automatic_test) {
   add_filter($hook, 'mirror_every_link', 11);
 }
+ */
 
 /**
  * Helper to check for wget on the server.
