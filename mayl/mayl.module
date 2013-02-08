@@ -69,132 +69,129 @@ function mayl_permission() {
 }
 
 /**
- * Actually handle the cite (aka mirror) shortcode
+ * Implements hook_filter_info().
  */
-function cite_shortcode_func( $atts, $content = NULL ) {
-    global $log, $mirrored_css_class, $mirror_css_class, $mayl_icon;
+function mayl_filter_info() {
+  return array(
+    'mayl' => array(
+      'title' => t('Mirror As You Link'),
+      'decription' => t(''),
+      'process callback' => 'mayl_filter_process',
+      'tips callback' => 'mayl_filter_tips',
+    ),
+  );
+}
 
-    debug("content='$content', atts='" . var_export($atts, true) . "'");
+/**
+ * Filter tips callback.
+ */
+function mayl_filter_tips($filter, $format, $long = FALSE) {
+  return t('Process all links wrapped in [mirror] tags and provide links to locally mirrored copies of the linked content.');
+}
 
-  // Parse and handle input attributes.
-  extract( shortcode_atts( array(
-    'href' => NULL,
-    'title' => ''
-  ), $atts ) );
+/**
+ * Filter callback.
+ *
+ * Process [mirror] tags.
+ */
+function mayl_filter_process($text, $filter) {
+  global $log, $mirrored_css_class, $mirror_css_class, $mayl_icon;
 
-  // If only one of $content or $href is NULL, fill in with the other.
-  if ($content === NULL and $href === NULL)
-    return '<span class="error">cite error: Both content and href are NULL.</span>';
-  else if ($content === NULL)
-    $content = $href;
-  else if ($href === NULL)
-    $href = $content;
+  debug(__FUNCTION__);
 
-  // Does nothing atm, because the shortcode parser fails in this case anyway.
-  $href = trim($href, '\'"');
+  $pregs = array(
+    '#\[mirror href=([\w:;&,%+~!=@\/\.\-\#\?]+?)\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\2</a>',
+    '#\[mirror\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\1</a>',
+  );
 
-  $ret = "<a href=\"$href\" class=\"$mirrored_css_class\" title=\"$title\">$content</a>";
+  return preg_replace(array_keys($pregs), array_values($pregs), $text);
 
-  // Create the mirror. If it fails, print an appropriate error.
-  $mirror_url = create_mirror($href);
-
-  if ($mirror_url === MIRROR_ERROR_PERMISSIONS)
+/*
     $ret .= ' <span class="error">cite error: Apache does not have write permissions on mirror directory.</span>';
   else if ($mirror_url === MIRROR_ERROR_INVALID)
     $ret .= " <span class=\"error\">cite error: Invalid URL '$href'</span>";
   else
     $ret .= " <a href=\"$mirror_url\" class=\"$mirror_css_class\" title=\"Mirror of $href\">$mayl_icon</a>";
+*/
 
-  return $ret;
+  return $text;
 }
 
 /**
- * Run the shortcode parser just for [mirror/cite]
- */
-function do_mayl_shortcode( $content ) {
-
-  global $shortcode_tags, $log;
-
-    static $cnt;
-    // trying to figure out why things are being called multiple times
-    //debug("bt: " . var_export(debug_backtrace(), true));
-    if ($cnt > 0)
-        debug("count = $cnt is  > 0!  filter running multiple times");
-    $cnt += 1;
-        
-  $tmp = $shortcode_tags;
-  $shortcode_tags = array('cite' => 'cite_shortcode_func',
-                            'mirror' => 'cite_shortcode_func');
-
-  $content = do_shortcode($content);
-    // if using wp_insert_post_data hook
-    //$data['post_content'] = do_shortcode($data['post_content']);
-
-  $shortcode_tags = $tmp;
-
-//    return $data;        // if using wp_insert_post_data hook
-  return $content;
-}
-
-/**
- * NOTE: ALPHA code.
+ * Implements hook_entity_presave().
  *
- * find all links that aren't already mirrored / mirrors (using css class),
+ * Find all links that aren't already mirrored / mirrors (using css class),
  * and mirror them.
- *
- * TODO: This is for hook_presave() I think.
  */
-function mirror_every_link( $content ) {
-  global $log, $mirrored_css_class, $mirror_css_class, $mayl_icon;
+function mayl_entity_presave($entity, $type) {
+  $fields = field_info_fields();
 
-  debug('Attempting to mirror every link...');
+  // Endless loops.
+  foreach ($fields as $field) {
+    if ($field['type'] == 'text_long' || $field['type'] == 'text_with_summary') {
+      if (isset($entity->{$field['field_name']}) ){
+        foreach ($entity->{$field['field_name']} as $langcode => $items) {
+          foreach ($items as $delta => $item) {
 
-  $html = str_get_html($content);
-  if ($html === FALSE)
-    return $content;
+            // Grab the field value and find the links via simplehtmldom.
+            $value = $entity->{$field['field_name']}[$langcode][$delta]['value'];
+            mayl_mirror_links($value);
 
-  // Append a local mirror link (icon) to all links.
-  foreach($html->find("a[href]") as $element) {
-    // Parser has a bad tendency to mangle these, so needs some trim magic.
-    if (isset($element->class)) {
-      $class = trim($element->class, '"\\');
-      if ($class === $mirrored_css_class or $class === $mirror_css_class)
-        continue;
-    }
-
-    $href = trim($element->href, '\'"\\');
-    if (!filter_var($href, FILTER_VALIDATE_URL, FILTER_FLAGS_HOST_REQUIRED))
-      continue;
-
-    // TODO: check if link is local.
-    debug("Mirroring $href");
-
-    // module_load_include();
-    $mirror_url = create_mirror($href);
-
-    if ($mirror_url === MIRROR_ERROR_PERMISSIONS)
-      $element->outertext .= ' <span class="error">cite error: Apache does not have write permissions on mirror directory.</span>';
-    else if ($mirror_url === MIRROR_ERROR_INVALID)
-      $element->outertext .= " <span class=\"error\">cite error: Invalid URL $href</span>";
-    else {
-      $element->class = "\"$mirrored_css_class\"";
-      $element->outertext .= " <a href=\"$mirror_url\" class=\"$mirror_css_class\" title=\"Mirror of $href\">$mayl_icon</a>";
+            if ($field['type'] == "text_with_summary") {
+              $summary = $entity->{$field['field_name']}[$langcode][$delta]['summary'];
+              mayl_mirror_links($summary);
+            }
+          }
+        }
+      }
     }
   }
 
-  return $html->save();
+  return;
 }
 
-/*
-$hook = 'content_save_pre';
-//$hook = 'wp_insert_post_data';
-add_filter($hook, 'do_mayl_shortcode', 11);
-
-$automatic_test = get_key($options, 'mirror_all', '');
-if ($automatic_test) {
-  add_filter($hook, 'mirror_every_link', 11);
-}
+/**
+ * Helper to mirror links.
+ *
+ * @param $html
+ *   An HTML string.
  */
+function mayl_mirror_links($html) {
+
+  debug(__FUNCTION__);
+
+  if (empty($html)) {
+    return;
+  }
+
+  $mirror_class = variable_get('mayl_mirror_css_class', 'mirror');
+  $href_class   = variable_get('mayl_href_css_class', 'mirrored');
+
+  $pregs = _mayl_pregs();
+
+  foreach (array_keys($pregs) as $preg) {
+    $count = preg_match_all($preg, $html, $matches, PREG_SET_ORDER);
+
+    foreach ($matches as $match) {
+      // In theory the $absolute=TRUE param ensures we only process remote URLs.
+      if (!valid_url($match[1], TRUE)) {
+        debug('Not valid');
+        debug($match);
+        continue;
+      }
+
+      module_load_include('inc', 'mayl', 'mayl.mirror');
+      $mid = mayl_create_mirror($match[1]);
+
+      if ($mid === FALSE) {
+        drupal_set_message(t('Unable to mirror %url', array('%url' => $match[1])));
+      }
+    }
+  }
+
+  // Really, just return. We do the rewriting in the filter.
+  return;
+}
 
 /**
  * Helper to check for wget on the server.
@@ -216,4 +213,22 @@ function _mayl_admin_wget_check($form_element) {
   }
 
   return $form_element;
+}
+
+
+/**
+ * Helper that returns the pregs we use.
+ */
+function _mayl_pregs() {
+  return array(
+    '#\[mirror href=(.*?)[\ ?]\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\2</a>',
+    '#\[mirror\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\1</a>'
+  );
+}
+
+/**
+ * Return mirror URL for a source URL.
+ */
+function _mayl_mirror_url($url) {
+  return db_select('mayl_mirrors', 'm')->fields('m', array('host_url'))->fetchField();
 }

@@ -7,12 +7,12 @@
  * This program is free software; you can redistribute it and/or modify 
  * it under the terms of the GNU General Public License as published by 
  * the Free Software Foundation; version 2 of the License.
- * 
+ *
  * This program is distributed in the hope that it will be useful, 
  * but WITHOUT ANY WARRANTY; without even the implied warranty of 
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
  * GNU General Public License for more details. 
- * 
+ *
  * You should have received a copy of the GNU General Public License 
  * along with this program; if not, write to the Free Software 
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
@@ -48,12 +48,6 @@ function mayl_schema() {
          'type' => 'text',
          'not null' => TRUE,
        ),
-       'mirror_time' => array(
-         'description' => 'The time the mirror was created.',
-         'type' => 'int',
-         'not null' => FALSE,
-         'default' => 0,
-       ),
        'mirror_size' => array(
          'description' => 'The mirror size.',
          'type' => 'int',
@@ -62,11 +56,23 @@ function mayl_schema() {
          'unsigned' => TRUE,
          'default' => 0,
         ),
+       'created' => array(
+         'description' => 'The time the mirror was created.',
+         'type' => 'int',
+         'not null' => FALSE,
+         'default' => 0,
+       ),
+       'updated' => array(
+         'description' => 'The time the mirror was updated.',
+         'type' => 'int',
+         'not null' => FALSE,
+         'default' => 0,
+       ),
       ),
       'primary key' => array('mid'),
       'indexes' => array(
         'nid' => array('nid'),
-        'mirror_time' => array('mirror_time'),
+        'time' => array('created', 'updated'),
       ),
   );
 
@@ -81,6 +87,7 @@ function mayl_uninstall() {
   variable_del('mayl_mirror_css_class');
   variable_del('mayl_wget_path');
   variable_del('mayl_user_agent');
+  variable_del('mayl_mirror_directory');
 }
 
 /*
