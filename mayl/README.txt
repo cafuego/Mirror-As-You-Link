@@ -9,43 +9,34 @@ Q: Is Mirror As You Link ready for use?
 A: This project is in an early stage and we would like it to evolve it rapidly. It works in some capacity now, and will work better in the future!  But please understand that it sometimes may break.  If it does, please tell us how!  Not breaking is our highest priority at this time.  We do not believe there is any way this could permanently damage your blog (but you do backup your blog, right? Please do!)
 
 Q: How do I install Mirror As You Link?
-A: Unzip and move the folder "mayl" into your "wp-content/plugins/" directory. Make sure the subfolder "mayl/mirrors" is readable and writeable by the WordPress/Apache user (usually "apache", "www", or "www-data").  If you would like to contribute, we would very much like for people to write installation scripts, etc. to streamline this process on various hosting platforms.  
+A: Extract the contents of the downloaded file to sites/all/modules.
+A: Unzip and move the folder "mayl" into your "wp-content/plugins/" directory.
 
 Dependencies:
 python (tested with 2.6 and 2.7, should work with earlier versions too)
-wget (works with 1.13, not 1.11).  If wget is not in /usr/local/bin/, change the path on the Mirror As You Link settings page in WordPress
+wget (works with 1.13, not 1.11).  If wget is not in /usr/bin/, change the path on the Mirror As You Link settings page.
 
 Q: How do I use Mirror As You Link?
 
 A: When you author a post, simply wrap your link in the shortcode:
 [mirror]http://mirror.me/[/mirror]
 or
-[mirror href=http://mirror.me/ ]I mirrored this link![/mirror]
-At this time, the shortcode "cite" is another alias for "mirror".
-
-KNOWN BUGS:
-- For now, you must use an absolute URL (begins with "http://").
-- If you use the "href=" syntax, do not wrap your URL in quotes.
-- If you use the "href=" syntax, be careful to put a space between the URL and the closing bracket (]). If you type something like:
-[mirror href=http://mirror.me/]I am error![/mirror]
-The URL's closing slash (/) will confuse the Wordpress shortcode parser.
-If you would like to contribute, these are good bugs to fix!
-
-Q: That's too much work!
-
-A: You can enable "automatic mirroring" mode from the MAYL Settings menu.  This will mirror all links in posts you save after enabling this feature.
+[mirror href=http://mirror.me/]I mirrored this link![/mirror]
 
 Q: What is MAYL doing? How does it work? Will it break my server?
 
 A: MAYL is just a simple user interface wrapped around existing software (at this time, wget) that, on its own, is sometimes cryptic and frustrating to use.  We are trying to make using this technology as effortless as possible, so that people will actually do so on a regular basis.
 
-The principle security concern is that you will mirror a Web site that hosts malicious code, either server-side (threatening your server) or client-side (threatening readers who visit the mirror). To protect your server, you should configure your webserver not to run code from the "mayl/mirrors" directory.  To do this in Apache, put the following 3 lines mirrors/.htaccess (this is included in the install)
+The principle security concern is that you will mirror a Web site that hosts malicious code, either server-side (threatening your server) or client-side (threatening readers who visit the mirror). To protect your server, you should configure your webserver not to run code from the "public://mirrors" directory.  To do this in Apache, put the following 3 lines mirrors/.htaccess (this is included in the install)
 
 Options -Indexes
 Options -ExecCGI
 AddHandler cgi-script .php .pl .py .jsp .asp .htm .shtml .sh .cgi
 
 To protect your users, wget should be configured to not download JavaScript, etc, though this may break some functionality on the mirrored page.  If you would like to contribute, it could be good to replace wget with mirroring software that can sanitize mirrored files (PHP native would be a plus as that would remove a dependency).
+
+
+// The rest of this document pertains mostly to the WordPress plugin project.
 
 Q: I think you should add feature XYZZY!
 

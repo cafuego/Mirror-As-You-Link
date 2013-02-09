@@ -76,16 +76,18 @@ function _mayl_placeholder_file($mirror_dir, $filename, $host_url) {
 function mayl_create_mirror($host_url) {
   global $REROUTE_COMMANDS;
 
-  debug("create_mirror($host_url)");
+  $mirror = mayl_get_mirror($host_url);
+  if (!empty($mirror->mid)) {
+    drupal_set_message(t('A mirror for @url already exists.', array('@url' => $host_url)));
+    return $mirror->mid;
+  }
 
   $wget_path  = variable_get('mayl_wget_path', '/usr/bin/wget');
   $user_agent = variable_get('mayl_user_agent', 'Mozilla/5.0');
 
-  debug("wget='$wget_path', ua='$user_agent'");
-
   $url_path = drupal_parse_url($host_url, PHP_URL_PATH);
   if ($url_path === FALSE) {
-    return MIRROR_ERROR_INVALID;
+    return FALSE;
   }
 
   // VS: By fiat, we insist that the main mirrored file is called index.html.
@@ -115,7 +117,6 @@ function mayl_create_mirror($host_url) {
   $mayl_mirror_dir = variable_get('mayl_mirror_directory', 'public://mirror');
   $mirror_dir = $mayl_mirror_dir . '/' . $mid;
   $mirror_log = drupal_realpath($mayl_mirror_dir . '/' . $mid . '.log');
-  debug($mirror_log);
 
   // Create the new mirror directory, as wget expects it to exist!
   drupal_mkdir($mirror_dir);
@@ -133,7 +134,7 @@ function mayl_create_mirror($host_url) {
   $cmd = "$mirror_script_path --ua $ua --wget_path $wget_path " . drupal_realpath($mirror_dir) . " $host_url";
 
   // This needs love. Possibly even some hook_cron or batch API goo.
-  debug($cmd);
+  // Maybe not a python script wrapping wget. Hrm.
   if ($REROUTE_COMMANDS) {
     // Custom magic to actually run cmd.
     throw new Exception('Not implemented: needs to be customized for your hosting server.');
@@ -141,8 +142,16 @@ function mayl_create_mirror($host_url) {
     exec($cmd, $output);
   }
 
-  $output = print_r($output, TRUE);
-  debug("Exec output: $output");
+  // @TODO: Nice things like error checking.
+
+  // Update the database record for this mirror.
+  // @TODO: Size, maybe entity id?
+  db_update('mayl_mirrors')
+    ->fields(array(
+      'updated' => time(),
+    ))
+    ->condition('mid', $mid)
+    ->execute();
 
   return $mid;
 }

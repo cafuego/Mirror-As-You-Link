@@ -95,26 +95,9 @@ function mayl_filter_tips($filter, $format, $long = FALSE) {
  * Process [mirror] tags.
  */
 function mayl_filter_process($text, $filter) {
-  global $log, $mirrored_css_class, $mirror_css_class, $mayl_icon;
+  $pregs = _mayl_pregs();
 
-  debug(__FUNCTION__);
-
-  $pregs = array(
-    '#\[mirror href=([\w:;&,%+~!=@\/\.\-\#\?]+?)\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\2</a>',
-    '#\[mirror\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\1</a>',
-  );
-
-  return preg_replace(array_keys($pregs), array_values($pregs), $text);
-
-/*
-    $ret .= ' <span class="error">cite error: Apache does not have write permissions on mirror directory.</span>';
-  else if ($mirror_url === MIRROR_ERROR_INVALID)
-    $ret .= " <span class=\"error\">cite error: Invalid URL '$href'</span>";
-  else
-    $ret .= " <a href=\"$mirror_url\" class=\"$mirror_css_class\" title=\"Mirror of $href\">$mayl_icon</a>";
-*/
-
-  return $text;
+  return preg_replace_callback($pregs, 'mayl_link_replace', $text);
 }
 
 /**
@@ -153,30 +136,30 @@ function mayl_entity_presave($entity, $type) {
 /**
  * Helper to mirror links.
  *
+ * Extract tagged links from the html content and download their target to a
+ * local directory.
+ *
  * @param $html
  *   An HTML string.
+ *
+ * @return
+ *   A new mirror link ID or FALSE on failure.
  */
 function mayl_mirror_links($html) {
 
-  debug(__FUNCTION__);
-
+  // Early return if there is no content.
   if (empty($html)) {
-    return;
+    return 0;
   }
-
-  $mirror_class = variable_get('mayl_mirror_css_class', 'mirror');
-  $href_class   = variable_get('mayl_href_css_class', 'mirrored');
 
   $pregs = _mayl_pregs();
 
-  foreach (array_keys($pregs) as $preg) {
+  foreach ($pregs as $preg) {
     $count = preg_match_all($preg, $html, $matches, PREG_SET_ORDER);
 
     foreach ($matches as $match) {
       // In theory the $absolute=TRUE param ensures we only process remote URLs.
       if (!valid_url($match[1], TRUE)) {
-        debug('Not valid');
-        debug($match);
         continue;
       }
 
@@ -190,7 +173,7 @@ function mayl_mirror_links($html) {
   }
 
   // Really, just return. We do the rewriting in the filter.
-  return;
+  return $mid;
 }
 
 /**
@@ -215,20 +198,67 @@ function _mayl_admin_wget_check($form_element) {
   return $form_element;
 }
 
-
 /**
  * Helper that returns the pregs we use.
  */
 function _mayl_pregs() {
   return array(
-    '#\[mirror href=(.*?)[\ ?]\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\2</a>',
-    '#\[mirror\](.*?)\[/mirror\]#si' => '<a href="\\1" class="mirrored" title="Mirror of \\1\">\\1</a>'
+    '#\[mirror href=(.*?)[\ ?]\](.*?)\[/mirror\]#si',
+    '#\[mirror\](.*?)\[/mirror\]#si'
   );
 }
 
 /**
- * Return mirror URL for a source URL.
+ * Returns a themed link to the local mirror.
+ *
+ * @param $link
+ *   The source URL to look up.
+ * @param $title
+ *   The link title to return.
  */
-function _mayl_mirror_url($url) {
-  return db_select('mayl_mirrors', 'm')->fields('m', array('host_url'))->fetchField();
+function mayl_link_replace($matches) {
+  $class   = variable_get('mayl_href_css_class', 'mirrored');
+
+  $link = $matches[1];
+  $title = empty($matches[2]) ? $matches[1] : $matches[2];
+
+  // Lookup ID and whether the link is done.
+  $mirror = mayl_get_mirror($link);
+
+  if (!empty($mirror->mid)) {
+    $link = mayl_mirror_link($mirror);
+  }
+
+  $title = (empty($title)) ? $link : $title;
+  $attributes = array(
+    'title' => t('Mirror of @url', array('@url' => $mirror->host_url)),
+    'class' => array($class),
+  );
+
+  return l($title, $link, array('attributes' => $attributes));
+}
+
+/**
+ * Return mirror info for a source URL.
+ */
+function mayl_get_mirror($link) {
+  $query = db_select('mayl_mirrors', 'm')
+    ->fields('m')
+    ->condition('host_url', $link)
+    ->condition('updated', 0, '>');
+
+  return $query->execute()->fetchObject();
+}
+
+/**
+ * Create a local mirror link from a mirror object.
+ *
+ * @TODO: Maybe this should be a theme function.
+ */
+function mayl_mirror_link($mirror) {
+//$ret .= " <a href=\"$mirror_url\" class=\"$mirror_css_class\" title=\"Mirror of $href\">$mayl_icon</a>";
+
+  $mirror_link = variable_get('mayl_mirror_directory', 'public://mirror') . '/' . $mirror->mid . '/index.html';
+
+  return file_create_url($mirror_link);
 }
